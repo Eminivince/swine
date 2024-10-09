@@ -1087,7 +1087,8 @@ async function getUserHoldings(walletAddress) {
 }
 
 // Function to display buy/sell options with token data
-async function showBuySellOptions(chatId) {
+// Function to display buy/sell options with token data
+async function showBuySellOptions(chatId, messageId = null) {
   const wallet = userWallets[chatId];
   if (!wallet) {
     bot.sendMessage(
@@ -1102,32 +1103,45 @@ async function showBuySellOptions(chatId) {
   const userHoldings = await getUserHoldings(wallet.address);
   const userHoldingsValueInUSD = userHoldings * tokenPrice;
 
-  // Display token details, user holdings, and buy/sell options
-  bot.sendMessage(
-    chatId,
-    `✅ Token: Swiss Wine\n📌 Ticker: $SWINE\n\n🏷️ Price: $${tokenPrice.toFixed(
-      5
-    )} USD\n🏪 Market Cap: $${marketCap.toFixed(
-      4
-    )} USD\n🏦 Holdings: ${userHoldings.toFixed(
-      2
-    )} $SWINE\n💸 Worth: $${userHoldingsValueInUSD.toFixed(3)} USD`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "Buy X", callback_data: "buy_x" },
-            { text: "Sell X", callback_data: "sell_x" },
-          ],
-          [
-            { text: "Buy X % of wallet", callback_data: "buy_x_percent" },
-            { text: "Sell X % of tokens", callback_data: "sell_x_percent" },
-          ],
-          [{ text: "Wallet", callback_data: "view_wallet" }],
+  // Prepare the message text
+  const messageText = `✅ Token: Swiss Wine\n📌 Ticker: $SWINE\n\n🏷️ Price: $${tokenPrice.toFixed(
+    7
+  )} USD\n🏪 Market Cap: $${marketCap.toFixed(
+    4
+  )} USD\n🏦 Holdings: ${userHoldings.toFixed(
+    2
+  )} $SWINE\n💸 Worth: $${userHoldingsValueInUSD.toFixed(3)} USD`;
+
+  // Prepare the inline keyboard with the Refresh button
+  const options = {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "Buy X", callback_data: "buy_x" },
+          { text: "Sell X", callback_data: "sell_x" },
         ],
-      },
-    }
-  );
+        [
+          { text: "Buy X % of wallet", callback_data: "buy_x_percent" },
+          { text: "Sell X % of tokens", callback_data: "sell_x_percent" },
+        ],
+        [{ text: "Refresh", callback_data: "refresh_token_details" }],
+        [{ text: "Wallet", callback_data: "view_wallet" }],
+      ],
+    },
+    parse_mode: "Markdown",
+  };
+
+  if (messageId) {
+    // Edit the existing message
+    options.chat_id = chatId;
+    options.message_id = messageId;
+    bot
+      .editMessageText(messageText, options)
+      .catch((error) => console.error("Error editing message:", error));
+  } else {
+    // Send a new message and capture the message_id if needed
+    bot.sendMessage(chatId, messageText, options);
+  }
 }
 
 // Function to show the main menu
@@ -1142,10 +1156,10 @@ async function showMainMenu(chatId) {
     // Ask the user to deposit AMB
     bot.sendMessage(
       chatId,
-      `🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀\n\nWelcome to $SWINE trading bot built by the *$SWINE* community!\n\nWe have created a wallet for you on AirDAO network, alternatively, you may import your own wallet.\n\nYou currently have no AMB in your wallet.\n\nTo start trading, deposit AMB to your $SWINE_bot wallet address:\n\n \`${wallet.address}(Click to Copy)\`\n\nFor more info on your wallet and to retrieve your private key, tap the wallet button below.\n\n 🚨 Protect your private keys. $SWINE community will not be responsible for any loss of funds! \n\nTelegram: https://t.me/swine_coin`,
+      `🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀\n\nWelcome to $SWINE trading bot built by the *$SWINE* community!\n\nWe have created a wallet for you on AirDAO network, alternatively, you may import your own wallet.\n\nYou currently have no AMB in your wallet.\n\nTo start trading, deposit AMB to your $SWINE_bot wallet address:\`${wallet.address}\`\n\nFor more info on your wallet and to retrieve your private key, tap the wallet button below.\n\n 🚨 Protect your private keys. $SWINE community will not be responsible for any loss of funds! \n\nTelegram: https://t.me/swine_coin`,
       {
         parse_mode: "Markdown",
-        disable_web_page_preview: true, // Disable link previews
+        // disable_web_page_preview: true, // Disable link previews
         reply_markup: {
           inline_keyboard: [
             [
@@ -1214,6 +1228,9 @@ bot.on("callback_query", async (callbackQuery) => {
   } else if (data === "sell_x" || data === "sell_x_percent") {
     // Handle sell options
     await handleSellOptions(chatId, data);
+  } else if (data === "refresh_token_details") {
+    // Refresh the token details and edit the existing message
+    await showBuySellOptions(chatId, messageId);
   }
 });
 
@@ -1390,7 +1407,16 @@ async function executeBuy(chatId, ambAmount) {
 
     const shtAdds = shortenAddress(tx.hash);
 
-    bot.sendMessage(chatId, `Swap initiated: https://airdao.io/tx/${shtAdds}`);
+    bot
+      .sendMessage(
+        chatId,
+        `Swap initiated: https://airdao.io/tx/${shtAdds} \n...waiting for confirmation...`
+      )
+      .then((sentMessage) => {
+        setTimeout(() => {
+          bot.deleteMessage(chatId, sentMessage.message_id);
+        }, 20000); // Delete after 20 seconds
+      });
 
     // Wait for the transaction to be mined
     const receipt = await provider.waitForTransaction(tx.hash);
@@ -1398,10 +1424,16 @@ async function executeBuy(chatId, ambAmount) {
     if (receipt && receipt.status === 1) {
       // Transaction was successful
 
-      bot.sendMessage(
-        chatId,
-        `Transaction successful! Block number: ${receipt.blockNumber}, TxHash: https://airdao.io/tx/${shtAdds}`
-      );
+      bot
+        .sendMessage(
+          chatId,
+          `Transaction successful: https://airdao.io/tx/${shtAdds}`
+        )
+        .then((sentMessage) => {
+          setTimeout(() => {
+            bot.deleteMessage(chatId, sentMessage.message_id);
+          }, 20000); // Delete after 20 seconds
+        });
     } else {
       // Transaction failed
       bot.sendMessage(
@@ -1417,10 +1449,7 @@ async function executeBuy(chatId, ambAmount) {
     if (error.code === "INSUFFICIENT_FUNDS") {
       bot.sendMessage(chatId, "Error: Insufficient funds to execute the swap.");
     } else if (error.code === "CALL_EXCEPTION") {
-      bot.sendMessage(
-        chatId,
-        "Error: The transaction was reverted. Please check the token contract or the path."
-      );
+      bot.sendMessage(chatId, "Error: The transaction was reverted.");
     } else {
       bot.sendMessage(chatId, "An error occurred while executing the swap.");
     }
@@ -1446,7 +1475,13 @@ async function executeSell(chatId, tokenAmount) {
 
     if (allowance < amountInWei) {
       // Need to approve the router to spend tokens
-      bot.sendMessage(chatId, "Approving token allowance...");
+      bot
+        .sendMessage(chatId, "Approving token allowance...")
+        .then((sentMessage) => {
+          setTimeout(() => {
+            bot.deleteMessage(chatId, sentMessage.message_id);
+          }, 20000); // Delete after 20 seconds
+        });
 
       const approveTx = await tokenContract.approve(
         UNISWAP_ROUTER_ADDRESS,
@@ -1454,7 +1489,13 @@ async function executeSell(chatId, tokenAmount) {
       );
       await approveTx.wait();
 
-      bot.sendMessage(chatId, "Token allowance approved successfully!");
+      bot
+        .sendMessage(chatId, "Token allowance approved successfully!")
+        .then((sentMessage) => {
+          setTimeout(() => {
+            bot.deleteMessage(chatId, sentMessage.message_id);
+          }, 20000); // Delete after 20 seconds
+        });
     }
 
     // Estimate gas
@@ -1485,23 +1526,41 @@ async function executeSell(chatId, tokenAmount) {
 
     const shtAdds = shortenAddress(tx.hash);
 
-    bot.sendMessage(chatId, `Swap initiated: https://airdao.io/tx/${shtAdds}`);
+    bot
+      .sendMessage(chatId, `Swap initiated: https://airdao.io/tx/${shtAdds}`)
+      .then((sentMessage) => {
+        setTimeout(() => {
+          bot.deleteMessage(chatId, sentMessage.message_id);
+        }, 20000); // Delete after 20 seconds
+      });
 
     // Wait for the transaction to be mined
     const receipt = await tx.wait();
 
     if (receipt && receipt.status === 1) {
       // Transaction was successful
-      bot.sendMessage(
-        chatId,
-        `Transaction successful! Block number: ${receipt.blockNumber}, TxHash: https://airdao.io/tx/${shtAdds}`
-      );
+      bot
+        .sendMessage(
+          chatId,
+          `Transaction successful: https://airdao.io/tx/${shtAdds}`
+        )
+        .then((sentMessage) => {
+          setTimeout(() => {
+            bot.deleteMessage(chatId, sentMessage.message_id);
+          }, 20000); // Delete after 20 seconds
+        });
     } else {
       // Transaction failed
-      bot.sendMessage(
-        chatId,
-        "Transaction failed. Please check the details and try again."
-      );
+      bot
+        .sendMessage(
+          chatId,
+          "Transaction failed. Please check the details and try again."
+        )
+        .then((sentMessage) => {
+          setTimeout(() => {
+            bot.deleteMessage(chatId, sentMessage.message_id);
+          }, 20000); // Delete after 20 seconds
+        });
     }
 
     showBuySellOptions(chatId);
@@ -1511,10 +1570,7 @@ async function executeSell(chatId, tokenAmount) {
     if (error.code === "INSUFFICIENT_FUNDS") {
       bot.sendMessage(chatId, "Error: Insufficient funds to execute the swap.");
     } else if (error.code === "CALL_EXCEPTION") {
-      bot.sendMessage(
-        chatId,
-        "Error: The transaction was reverted. Please check the token contract or the path."
-      );
+      bot.sendMessage(chatId, "Error: The transaction was reverted.");
     } else {
       console.error("Transaction failed", error);
       bot.sendMessage(chatId, "An error occurred while executing the swap.");
