@@ -3,7 +3,7 @@ const TelegramBot = require("node-telegram-bot-api");
 const { ethers } = require("ethers");
 
 // Replace with your actual bot token
-const bot = new TelegramBot("7831693119:AAE8YYElQyAO6WhiBA9_PvW6qLsSksD1UqU", {
+const bot = new TelegramBot("7959000600:AAFuwJRC3VL18UOUfoyOm63Gu1TOGTIXFrQ", {
   polling: true,
 });
 
@@ -1142,9 +1142,10 @@ async function showMainMenu(chatId) {
     // Ask the user to deposit AMB
     bot.sendMessage(
       chatId,
-      `🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀\nWelcome to $SWINE trading bot built by the *$SWINE* community!\n\nWe have created a wallet for you on AirDAO network.\nAlternatively, you may import your own wallet.\nYou currently have no AMB in your wallet.\n\nTo start trading, deposit AMB to your *$SWINE_bot* wallet address: \`${wallet.address}\`\n\nFor more info on your wallet and to retrieve your private key, tap the wallet button below.\n\nTelegram: <a href="https://t.me/swine_coin">https://t.me/swine_coin</a>`,
+      `🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀\n\nWelcome to $SWINE trading bot built by the *$SWINE* community!\n\nWe have created a wallet for you on AirDAO network, alternatively, you may import your own wallet.\n\nYou currently have no AMB in your wallet.\n\nTo start trading, deposit AMB to your $SWINE_bot wallet address:\n\n \`${wallet.address}(Click to Copy)\`\n\nFor more info on your wallet and to retrieve your private key, tap the wallet button below.\n\n 🚨 Protect your private keys. $SWINE community will not be responsible for any loss of funds! \n\nTelegram: https://t.me/swine_coin`,
       {
         parse_mode: "Markdown",
+        disable_web_page_preview: true, // Disable link previews
         reply_markup: {
           inline_keyboard: [
             [
