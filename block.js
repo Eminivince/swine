@@ -8,8 +8,6 @@ const provider = new ethers.JsonRpcProvider("https://network.ambrosus.io");
 const TELEGRAM_BOT_TOKEN = "7567838371:AAHeO1yM9fN6q1GGmIGFLpo3mTYRKIcL2tM";
 const TELEGRAM_CHAT_ID = "-1002302639008"; // Use a negative number for group chat IDs, e.g. -123456789
 
-// Specific Pair Contract Address (replace Uniswap V2 Router)
-// const PAIR_CONTRACT = "0x088276D10561D8260de2afc2e06462ec95A17477";
 const PAIR_CONTRACT = "0x6b339A7C07e1761Cfa04d63BC98f72bC82Bc7445";
 
 // UniswapV2Pair ABI
@@ -99,14 +97,9 @@ function parseSwapData(data) {
 
   //   console.log("erc20ReceivedHuman", erc20ReceivedHuman);
 
-  console.log(`AMB spent: ${ethSpentHuman} AMB`);
-  console.log(`ERC20 received: ${erc20ReceivedHuman} tokens`);
+  console.log(`Spent: ${ethSpentHuman} AMB`);
+  console.log(`Received: ${erc20ReceivedHuman} $SWINE`);
 
-  1559394086867313200;
-
-  //   13,012.5723166190000;
-
-  //   console.log(erc20Received / BigInt(10 ** 18));
   return {
     ethSpent: ethSpentHuman,
     erc20Received: erc20ReceivedHuman,
@@ -114,7 +107,6 @@ function parseSwapData(data) {
 }
 
 // Add the SWINE token contract address
-//const PAC_TOKEN_ADDRESS = "0x4C44A8B7823B80161Eb5E6D80c014024752607F2";
 const PAC_TOKEN_ADDRESS = "0x3669540fA80d0b2EebedfB88b9BAF7855EB1149d";
 
 // Add the SWINE token ABI (only including necessary functions)
@@ -169,7 +161,6 @@ async function calculatePacPriceAndMc() {
 
     // Calculate the price of SWINE in USD
     const pacPriceInUsd = pacPriceInEth * ethPriceInUSD;
-
 
     // Calculate the market cap
     const marketCap = pacPriceInUsd * formattedTotalSupply;
@@ -324,7 +315,7 @@ async function sendTelegramMessage(message) {
         [
           {
             text: "Buy Now",
-            url: "https://www.example.com/buy", // Replace with your actual purchase URL
+            url: "https://t.me/SWINE_buybot",
           },
         ],
       ],

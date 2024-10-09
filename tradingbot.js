@@ -1145,7 +1145,7 @@ async function showMainMenu(chatId) {
       `🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀\n\nWelcome to $SWINE trading bot built by the *$SWINE* community!\n\nWe have created a wallet for you on AirDAO network, alternatively, you may import your own wallet.\n\nYou currently have no AMB in your wallet.\n\nTo start trading, deposit AMB to your $SWINE_bot wallet address:\`${wallet.address}\`\n\nFor more info on your wallet and to retrieve your private key, tap the wallet button below.\n\n 🚨 Protect your private keys. $SWINE community will not be responsible for any loss of funds! \n\nTelegram: https://t.me/swine_coin`,
       {
         parse_mode: "Markdown",
-        // disable_web_page_preview: true, // Disable link previews
+        disable_web_page_preview: true, // Disable link previews
         reply_markup: {
           inline_keyboard: [
             [
@@ -1390,7 +1390,10 @@ async function executeBuy(chatId, ambAmount) {
 
     const shtAdds = shortenAddress(tx.hash);
 
-    bot.sendMessage(chatId, `Swap initiated: https://airdao.io/tx/${shtAdds} \n...waiting for confirmation...`);
+    bot.sendMessage(
+      chatId,
+      `Swap initiated: https://airdao.io/tx/${shtAdds} \n...waiting for confirmation...`
+    );
 
     // Wait for the transaction to be mined
     const receipt = await provider.waitForTransaction(tx.hash);
