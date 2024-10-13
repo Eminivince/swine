@@ -2,6 +2,19 @@ const axios = require("axios");
 const TelegramBot = require("node-telegram-bot-api");
 const { ethers } = require("ethers");
 
+const mongoose = require("mongoose");
+const User = require("./models/User"); // Adjust the path if necessary
+
+// Replace with your actual MongoDB connection string
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  "mongodb+srv://SwineMeme01:SwineMeme01@swinememe.fgbqy.mongodb.net/";
+
+mongoose
+  .connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("🚀 Connected to MongoDB"))
+  .catch((err) => console.error("Failed to connect to MongoDB", err));
+
 // Replace with your actual bot token
 const bot = new TelegramBot("7959000600:AAFuwJRC3VL18UOUfoyOm63Gu1TOGTIXFrQ", {
   polling: true,
@@ -1014,16 +1027,30 @@ const uniswapRouter = new ethers.Contract(
 );
 
 // Store users' wallets
-let userWallets = {};
+// let userWallets = {};
 
 // Function to generate or retrieve the user's wallet
-function generateOrRetrieveWallet(chatId) {
-  let wallet = userWallets[chatId];
-  if (!wallet) {
-    wallet = ethers.Wallet.createRandom().connect(provider);
-    userWallets[chatId] = wallet;
+async function generateOrRetrieveWallet(chatId) {
+  // Try to find the user in the database
+  let user = await User.findOne({ chatId: chatId });
+  if (user) {
+    // User exists, retrieve their wallet
+    console.log(user);
+    const wallet = new ethers.Wallet(user.privateKey, provider);
+    return wallet;
+  } else {
+    // User does not exist, create a new wallet
+    const wallet = ethers.Wallet.createRandom().connect(provider);
+    // Save the user to the database
+    const newUser = new User({
+      chatId: chatId,
+      walletAddress: wallet.address,
+      privateKey: wallet.privateKey,
+    });
+    console.log(user);
+    await newUser.save();
+    return wallet;
   }
-  return wallet;
 }
 
 // Function to get AMB balance and USD value
@@ -1087,8 +1114,8 @@ async function getUserHoldings(walletAddress) {
 }
 
 // Function to display buy/sell options with token data
-async function showBuySellOptions(chatId) {
-  const wallet = userWallets[chatId];
+async function showBuySellOptions(chatId, messageId = null) {
+  const wallet = await generateOrRetrieveWallet(chatId);
   if (!wallet) {
     bot.sendMessage(
       chatId,
@@ -1102,37 +1129,50 @@ async function showBuySellOptions(chatId) {
   const userHoldings = await getUserHoldings(wallet.address);
   const userHoldingsValueInUSD = userHoldings * tokenPrice;
 
-  // Display token details, user holdings, and buy/sell options
-  bot.sendMessage(
-    chatId,
-    `✅ Token: Swiss Wine\n📌 Ticker: $SWINE\n\n🏷️ Price: $${tokenPrice.toFixed(
-      7
-    )} USD\n🏪 Market Cap: $${marketCap.toFixed(
-      4
-    )} USD\n🏦 Holdings: ${userHoldings.toFixed(
-      2
-    )} $SWINE\n💸 Worth: $${userHoldingsValueInUSD.toFixed(3)} USD`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "Buy X", callback_data: "buy_x" },
-            { text: "Sell X", callback_data: "sell_x" },
-          ],
-          [
-            { text: "Buy X % of wallet", callback_data: "buy_x_percent" },
-            { text: "Sell X % of tokens", callback_data: "sell_x_percent" },
-          ],
-          [{ text: "Wallet", callback_data: "view_wallet" }],
+  // Prepare the message text
+  const messageText = `✅ Token: Swiss Wine\n📌 Ticker: $SWINE\n\n🏷️ Price: $${tokenPrice.toFixed(
+    7
+  )} USD\n🏪 Market Cap: $${marketCap.toFixed(
+    4
+  )} USD\n🏦 Holdings: ${userHoldings.toFixed(
+    2
+  )} $SWINE\n💸 Worth: $${userHoldingsValueInUSD.toFixed(3)} USD`;
+
+  // Prepare the inline keyboard with the Refresh button
+  const options = {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "Buy X Amount", callback_data: "buy_x" },
+          { text: "Sell X Amount", callback_data: "sell_x" },
         ],
-      },
-    }
-  );
+        [
+          { text: "Buy X % of wallet", callback_data: "buy_x_percent" },
+          { text: "Sell X % of tokens", callback_data: "sell_x_percent" },
+        ],
+        [{ text: "Refresh", callback_data: "refresh_token_details" }],
+        [{ text: "Wallet", callback_data: "view_wallet" }],
+      ],
+    },
+    parse_mode: "Markdown",
+  };
+
+  if (messageId) {
+    // Edit the existing message
+    options.chat_id = chatId;
+    options.message_id = messageId;
+    bot
+      .editMessageText(messageText, options)
+      .catch((error) => console.error("Error editing message:", error));
+  } else {
+    // Send a new message
+    bot.sendMessage(chatId, messageText, options);
+  }
 }
 
 // Function to show the main menu
 async function showMainMenu(chatId) {
-  const wallet = generateOrRetrieveWallet(chatId);
+  const wallet = await generateOrRetrieveWallet(chatId); // Added 'await'
   const { balanceInAmb } = await getWalletBalance(wallet);
 
   if (balanceInAmb > 0) {
@@ -1142,7 +1182,7 @@ async function showMainMenu(chatId) {
     // Ask the user to deposit AMB
     bot.sendMessage(
       chatId,
-      `🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀\n\nWelcome to $SWINE trading bot built by the *$SWINE* community!\n\nWe have created a wallet for you on AirDAO network, alternatively, you may import your own wallet.\n\nYou currently have no AMB in your wallet.\n\nTo start trading, deposit AMB to your $SWINE_bot wallet address:\`${wallet.address}\`\n\nFor more info on your wallet and to retrieve your private key, tap the wallet button below.\n\n 🚨 Protect your private keys. $SWINE community will not be responsible for any loss of funds! \n\nTelegram: https://t.me/swine_coin`,
+      `🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀\n\nWelcome to $SWINE trading bot built by the *$SWINE* community!\n\nWe have created a wallet for you on AirDAO network, alternatively, you may import your own wallet.\n\nYou currently have no AMB in your wallet.\n\nTo start trading, deposit AMB to your $SWINE_bot wallet address:\`${wallet.address}\n\nFor more info on your wallet and to retrieve your private key, tap the wallet button below.\n\n 🚨 Protect your private keys. $SWINE community will not be responsible for any loss of funds! \n\nTelegram: https://t.me/swine_coin`,
       {
         parse_mode: "Markdown",
         disable_web_page_preview: true, // Disable link previews
@@ -1170,7 +1210,8 @@ bot.onText(/\/start/, async (msg) => {
 bot.on("callback_query", async (callbackQuery) => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
-  const wallet = generateOrRetrieveWallet(chatId);
+  const messageId = callbackQuery.message.message_id; // Retrieve the message_id
+  const wallet = await generateOrRetrieveWallet(chatId);
 
   if (data === "view_wallet") {
     // Show wallet info
@@ -1182,7 +1223,15 @@ bot.on("callback_query", async (callbackQuery) => {
       const privateKey = msg.text.trim();
       try {
         const importedWallet = new ethers.Wallet(privateKey, provider);
-        userWallets[chatId] = importedWallet;
+        // Update or create the user in the database
+        await User.findOneAndUpdate(
+          { chatId: chatId },
+          {
+            walletAddress: importedWallet.address,
+            privateKey: importedWallet.privateKey,
+          },
+          { upsert: true }
+        );
         bot.sendMessage(chatId, "Wallet imported successfully! 🎉");
         await showMainMenu(chatId);
       } catch (error) {
@@ -1214,12 +1263,14 @@ bot.on("callback_query", async (callbackQuery) => {
   } else if (data === "sell_x" || data === "sell_x_percent") {
     // Handle sell options
     await handleSellOptions(chatId, data);
+  } else if (data === "refresh_token_details") {
+    await showBuySellOptions(chatId, messageId);
   }
 });
 
 // Function to display wallet info
 async function showWalletInfo(chatId) {
-  const wallet = generateOrRetrieveWallet(chatId);
+  const wallet = await generateOrRetrieveWallet(chatId); // Added 'await'
   const { balanceInAmb, balanceInUsd } = await getWalletBalance(wallet);
   const tokenBalance = await getUserHoldings(wallet.address);
   const tokenBalanceInUsd = tokenBalance * (await getTokenPriceFromPair());
@@ -1250,7 +1301,7 @@ async function showWalletInfo(chatId) {
 
 // Function to handle buy options
 async function handleBuyOptions(chatId, data) {
-  const wallet = userWallets[chatId];
+  const wallet = await generateOrRetrieveWallet(chatId);
   const balance = await provider.getBalance(wallet.address);
   const balanceInAmb = parseFloat(ethers.formatEther(balance));
 
@@ -1300,7 +1351,8 @@ async function handleBuyOptions(chatId, data) {
 
 // Function to handle sell options
 async function handleSellOptions(chatId, data) {
-  const wallet = userWallets[chatId];
+  const wallet = await generateOrRetrieveWallet(chatId);
+
   const tokenBalance = await getUserHoldings(wallet.address);
 
   if (tokenBalance <= 0) {
@@ -1353,7 +1405,7 @@ async function handleSellOptions(chatId, data) {
 
 // Function to execute a buy transaction
 async function executeBuy(chatId, ambAmount) {
-  const wallet = userWallets[chatId];
+  const wallet = await generateOrRetrieveWallet(chatId);
 
   const amountInWei = ethers.parseEther(ambAmount.toString());
 
@@ -1432,7 +1484,7 @@ async function executeBuy(chatId, ambAmount) {
 
 // Function to execute a sell transaction
 async function executeSell(chatId, tokenAmount) {
-  const wallet = userWallets[chatId];
+  const wallet = await generateOrRetrieveWallet(chatId);
   const tokenContract = new ethers.Contract(TOKEN_ADDRESS, tokenAbi, wallet);
 
   const amountInWei = ethers.parseEther(tokenAmount.toString());
