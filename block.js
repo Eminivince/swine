@@ -13,7 +13,7 @@ const TELEGRAM_CHAT_ID = "-1002471237939"; //
 // Replace with your actual AMB token contract address
 const AMB_TOKEN_ADDRESS = "0x2b2d892C3fe2b4113dd7aC0D2c1882AF202FB28F"; // SAMB here: Done
 
-const PAIR_CONTRACT = "0x2Eeec63169eA3d6EeB4DEAA23e21D1286084dCa2";
+const PAIR_CONTRACT = "0x1a052b0373115c796c636454fE8A90F53D28cf76"; //Done
 // Add the SWINE token contract address
 const SWINE_TOKEN_ADDRESS = "0xC410F3EB0c0f0E1EFA188D38C366536d59a265ba"; // Done
 
@@ -130,8 +130,14 @@ async function sendTelegramMessage(message) {
       inline_keyboard: [
         [
           {
-            text: "Buy Now",
+            text: "Buy Now on TG 🚀",
             url: "https://t.me/SWINE_buybot",
+          },
+        ],
+        [
+          {
+            text: "Buy on AstraDex 🚀",
+            url: "https://star-fleet.io/astra/swap?inputCurrency=AMB&outputCurrency=0xC410F3EB0c0f0E1EFA188D38C366536d59a265ba",
           },
         ],
       ],
@@ -196,7 +202,7 @@ async function getSwapEventsFromLogs(
 
     if (!logs || logs.length === 0) {
       console.log("No Swap events found in this batch.");
-      sendTelegramMessage("No Swap events found in this batch.");
+      // sendTelegramMessage("No Swap events found in this batch.");
       return;
     }
 

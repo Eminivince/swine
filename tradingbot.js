@@ -29,8 +29,8 @@ function shortenAddress(address) {
 
 // Uniswap Router Address and Token Address
 const UNISWAP_ROUTER_ADDRESS = "0xf7237C595425b49Eaeb3Dc930644de6DCa09c3C4";
-const TOKEN_ADDRESS = "0x3669540fA80d0b2EebedfB88b9BAF7855EB1149d";
-const PAIR_ADDRESS = "0x6b339A7C07e1761Cfa04d63BC98f72bC82Bc7445"; // Uniswap Pair address
+const TOKEN_ADDRESS = "0xC410F3EB0c0f0E1EFA188D38C366536d59a265ba";  //Done
+const PAIR_ADDRESS = "0x1a052b0373115c796c636454fE8A90F53D28cf76"; // 
 
 // ABI for Token and Pair Contract
 const tokenAbi = [
@@ -1419,7 +1419,7 @@ async function executeBuy(chatId, ambAmount) {
       to: UNISWAP_ROUTER_ADDRESS,
       value: amountInWei,
       data: uniswapRouter.interface.encodeFunctionData(
-        "swapExactAMBForTokens",
+        "swapExactAMBForTokensSupportingFeeOnTransferTokens",
         [0, path, wallet.address, deadline]
       ),
     });
@@ -1433,7 +1433,7 @@ async function executeBuy(chatId, ambAmount) {
       gasLimit: estimatedGas + BigInt(100000), // Use the estimated gas
       //   gasLimit: estimatedGas.add(ethers.BigNumber.from("100000")), // Adding buffer
       data: uniswapRouter.interface.encodeFunctionData(
-        "swapExactAMBForTokens",
+        "swapExactAMBForTokensSupportingFeeOnTransferTokens",
         [0, path, wallet.address, deadline]
       ),
     });
