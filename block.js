@@ -345,10 +345,6 @@ async function getSwapEventsFromLogs(
 <b>$SWINE</b> Buy!\n${diamonds}\n\n🔀 ${ethSpent} AMB (≈ $${valueInUsd} USD)\n🔀 ${swineReceivedFormatted} $SWINE\n👤 <a href="https://airdao.io/explorer/tx/${sender}">${senderAddress}</a> | <a href="https://airdao.io/explorer/tx/${transactionHash}">Txn</a>\n${holderMessage}\n💸 Market Cap: $${marketCap}\n💰 $SWINE Price: $${swinePriceInUsd}\n`;
 
           // Send message to Telegram
-          if (valueInUsd < 10) {
-            console.log("Too cheap to bother");
-            continue; // Skip sending the message
-          }
 
           await sendTelegramMessage(txDetails);
 
