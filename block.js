@@ -97,7 +97,6 @@ async function getEthPriceInUSD() {
     const response = await axios.get(
       "https://api.coingecko.com/api/v3/simple/price?ids=amber&vs_currencies=usd"
     );
-    console.log("AMB Price in USD:", response.data.amber.usd);
     return response.data.amber.usd;
   } catch (error) {
     console.error("Error fetching AMB price:", error);
@@ -134,9 +133,7 @@ async function calculateSwinePriceAndMc() {
     const marketCap =
       parseFloat(swinePriceInUsd) * parseFloat(formattedTotalSupply);
 
-    console.log("SWINE Price in AMB:", swinePriceInAmb);
-    console.log("SWINE Price in USD:", swinePriceInUsd);
-    console.log("SWINE Market Cap:", marketCap);
+    
 
     return {
       swinePriceInAmb: swinePriceInAmb.toFixed(8),
@@ -181,7 +178,6 @@ async function sendTelegramMessage(message) {
 
   try {
     await axios.post(url, params);
-    console.log("Message sent to Telegram group:", message);
   } catch (error) {
     console.error("Error sending message to Telegram:", error);
   }
